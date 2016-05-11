@@ -1,7 +1,6 @@
 /*
 *  cool.y
 *              Parser definition for the COOL language.
-*
 */
 %{
   #include <iostream>
@@ -73,12 +72,8 @@
     */
     
     
-    
     void yyerror(char *s);        /*  defined below; called for each parse error */
     extern int yylex();           /*  the entry point to the lexer  */
-    
-    /************************************************************************/
-    /*                DONT CHANGE ANYTHING IN THIS SECTION                  */
     
     Program ast_root;	      /* the result of the parse  */
     Classes parse_results;        /* for use in semantic analysis */
@@ -122,9 +117,6 @@
     %token <symbol>  TYPEID 278 OBJECTID 279 
     %token ASSIGN 280 NOT 281 LE 282 ERROR 283
     
-    /*  DON'T CHANGE ANYTHING ABOVE THIS LINE, OR YOUR PARSER WONT WORK       */
-    /**************************************************************************/
-    
     /* Complete the nonterminal list below, giving a type for the semantic
     value of each non terminal. (See section 3.6 in the bison 
     documentation for details). */
@@ -132,12 +124,11 @@
     /* Declare types for the grammar's non-terminals. */
     %type <program> program
 
-    %type <classes> class_list
     %type <class_> class
+    %type <classes> class_list
     
-    /* You will want to change the following line. */
-    %type <features> dummy_feature_list
     %type <feature> feature;
+    %type <features> dummy_feature_list
 
     %type <formal> formal;
     %type <formals> formal_list;
@@ -146,12 +137,10 @@
     %type <cases> case_list;
 
     %type <expression> expression;
-    %type <expression> initialization;
     %type <expression> let_list;
-    %type <expression> expr_let
 
     %type <expressions> expression_list;
-    %type <expressions> expression_dummy_list;
+    %type <expressions> dummy_expression_list;
 
     /* Precedence declarations go here. */
     %right ASSIGN /* lowest */
@@ -173,10 +162,10 @@
     ;
     
     class_list
-    : class			/* single class */
+    : class /* single class */
     { $$ = single_Classes($1);
     parse_results = $$; }
-    | class_list class	/* several classes */
+    | class_list class /* several classes */
     { $$ = append_Classes($1,single_Classes($2)); 
     parse_results = $$; }
     ;
@@ -194,7 +183,8 @@
     
     /* Feature list may be empty, but no empty features in list. */
     dummy_feature_list
-    : { $$ = nil_Features(); }
+    : 
+    { $$ = nil_Features(); }
     | feature
     { $$ = single_Features($1); }
     | dummy_feature_list feature
@@ -204,38 +194,36 @@
     feature
     : OBJECTID '(' formal_list  ')' ':' TYPEID '{' expression '}' ';'
     { @$ = @1;SET_NODELOC(@1);$$ = method($1,$3,$6,$8); }
-    | OBJECTID ':' TYPEID initialization ';'
-    { @$ = @1;SET_NODELOC(@1);$$ = attr($1,$3,$4); }
+    | OBJECTID ':' TYPEID ';'
+    { @$ = @1;SET_NODELOC(@1);$$ = attr($1,$3,no_expr()); }
+    | OBJECTID ':' TYPEID ASSIGN expression ';'
+    { @$ = @1;SET_NODELOC(@1);$$ = attr($1,$3,$5); }
     | error ';'
     {}
+    ;
+
+    formal_list
+    : 
+    { $$ = nil_Formals(); } 
+    | formal
+    { $$ = single_Formals($1); }
+    | formal_list ',' formal 
+    { $$ = append_Formals($1,single_Formals($3)); }
     ;
 
     formal
     : OBJECTID ':' TYPEID
     { @$ = @1;SET_NODELOC(@1);$$ = formal($1,$3); }
     ;
-    
-    formal_list
-    : { $$ = nil_Formals(); } 
-    | formal
-    { $$ = single_Formals($1); }
-    | formal_list ',' formal 
-    { $$ = append_Formals($1,single_Formals($3)); }
-    ;
    
-    initialization
-    : { $$ = no_expr(); }
-    | ASSIGN expression
-    { $$ = $2; }
-
     expression 
     : OBJECTID ASSIGN expression
     { @$ = @3;SET_NODELOC(@3);$$ = assign($1,$3); }
-    | expression '.' OBJECTID '(' expression_dummy_list ')'
-    { @$ = @1;SET_NODELOC(@1);$$ = dispatch($1,$3,$5);}
-    | expression '@' TYPEID '.' OBJECTID '(' expression_dummy_list ')'
+    | expression '.' OBJECTID '(' dummy_expression_list ')'
+    { @$ = @1;SET_NODELOC(@1);$$ = dispatch($1,$3,$5); }
+    | expression '@' TYPEID '.' OBJECTID '(' dummy_expression_list ')'
     { @$ = @1;SET_NODELOC(@1);$$ = static_dispatch($1,$3,$5,$7); }
-    | OBJECTID '(' expression_dummy_list ')'
+    | OBJECTID '(' dummy_expression_list ')'
     { @$ = @1;SET_NODELOC(@1);$$ = dispatch(object(idtable.add_string("self")),$1,$3);}
     | IF expression THEN expression ELSE expression FI
     { @$ = @2;SET_NODELOC(@2);$$ = cond($2,$4,$6); }
@@ -243,10 +231,8 @@
     { @$ = @2;SET_NODELOC(@2);$$ = loop($2,$4); }
     | '{' expression_list '}'
     { @$ = @2;SET_NODELOC(@2);$$ = block($2); }
-    | LET OBJECTID ':' TYPEID initialization let_list 
-    { @$ = @2;SET_NODELOC(@2);$$ = let($2,$4,$5,$6); }
-    | LET error let_list
-    { @$ = @3;SET_NODELOC(@3);$$ = $3; }
+    | LET let_list 
+    { @$ = @2;SET_NODELOC(@2);$$ = $2; }
     | CASE expression OF case_list ESAC
     { @$ = @2;SET_NODELOC(@2);$$ = typcase($2,$4); }
     | NEW TYPEID
@@ -292,35 +278,41 @@
     {}
     ;
 
-    expression_dummy_list
-    : { $$ = nil_Expressions(); }
+    dummy_expression_list
+    : 
+    { $$ = nil_Expressions(); }
     | expression
     { $$ = single_Expressions($1); }
-    | expression_dummy_list ',' expression
+    | dummy_expression_list ',' expression
     { $$ = append_Expressions($1,single_Expressions($3)); }
-    | expression_dummy_list ',' error
+    | dummy_expression_list ',' error
     {}
     ;
     
     let_list
-    : IN expression
-    { $$ = $2; }
-    | ',' OBJECTID ':' TYPEID initialization let_list 
-    { $$ = let($2,$4,$5,$6); }
-    | error ',' let_list { $$ = $3; } /* extra */
+    : OBJECTID ':' TYPEID IN expression
+    { @$ = @1;SET_NODELOC(@1);$$ = let($1,$3,no_expr(),$5); }
+    | OBJECTID ':' TYPEID ASSIGN expression IN expression
+    { @$ = @1;SET_NODELOC(@1);$$ = let($1,$3,$5,$7); }
+    | OBJECTID ':' TYPEID ',' let_list
+    { @$ = @1;SET_NODELOC(@1);$$ = let($1,$3,no_expr(),$5); }
+    | OBJECTID ':' TYPEID ASSIGN expression ',' let_list
+    { @$ = @1;SET_NODELOC(@1);$$ = let($1,$3,$5,$7); }
+    | error ',' let_list 
+    { @$ = @3;SET_NODELOC(@3);$$ = $3; }
     ;
     
     case
     : OBJECTID ':' TYPEID DARROW expression ';'
     { @$ = @1;SET_NODELOC(@1);$$ = branch($1,$3,$5); }
-    | error ';'
-    {}
     ;
 
     case_list
-    : case  /* single class */
+    : 
+    { $$ = nil_Cases(); }
+    | case  /* single case */
     { $$ = single_Cases($1); }
-    | case_list case  /* several classes */
+    | case_list case  /* several cases */
     { $$ = append_Cases($1,single_Cases($2)); }
     ;
 
