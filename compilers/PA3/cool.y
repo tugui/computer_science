@@ -231,8 +231,12 @@
     { @$ = @2;SET_NODELOC(@2);$$ = loop($2,$4); }
     | '{' expression_list '}'
     { @$ = @2;SET_NODELOC(@2);$$ = block($2); }
-    | LET let_list 
-    { @$ = @2;SET_NODELOC(@2);$$ = $2; }
+    | LET OBJECTID ':' TYPEID let_list
+    { @$ = @2;SET_NODELOC(@2);$$ = let($2,$4,no_expr(),$5); }
+    | LET OBJECTID ':' TYPEID ASSIGN expression let_list
+    { @$ = @2;SET_NODELOC(@2);$$ = let($2,$4,$6,$7); }
+    | LET error let_list
+    { @$ = @3;SET_NODELOC(@3);$$ = $3; }
     | CASE expression OF case_list ESAC
     { @$ = @2;SET_NODELOC(@2);$$ = typcase($2,$4); }
     | NEW TYPEID
@@ -290,15 +294,13 @@
     ;
     
     let_list
-    : OBJECTID ':' TYPEID IN expression
-    { @$ = @1;SET_NODELOC(@1);$$ = let($1,$3,no_expr(),$5); }
-    | OBJECTID ':' TYPEID ASSIGN expression IN expression
-    { @$ = @1;SET_NODELOC(@1);$$ = let($1,$3,$5,$7); }
-    | OBJECTID ':' TYPEID ',' let_list
-    { @$ = @1;SET_NODELOC(@1);$$ = let($1,$3,no_expr(),$5); }
-    | OBJECTID ':' TYPEID ASSIGN expression ',' let_list
-    { @$ = @1;SET_NODELOC(@1);$$ = let($1,$3,$5,$7); }
-    | error ',' let_list 
+    : IN expression
+    { @$ = @1;SET_NODELOC(@1);$$ = $2; }
+    | ',' OBJECTID ':' TYPEID  let_list
+    { @$ = @1;SET_NODELOC(@1);$$ = let($2,$4,no_expr(),$5); }
+    | ',' OBJECTID ':' TYPEID ASSIGN expression let_list
+    { @$ = @1;SET_NODELOC(@1);$$ = let($2,$4,$6,$7); }
+    | ',' error let_list 
     { @$ = @3;SET_NODELOC(@3);$$ = $3; }
     ;
     
