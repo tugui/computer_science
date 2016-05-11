@@ -48,30 +48,29 @@ int comment_level;
 /*
  * Define names for regular expressions here.
  */
-
 DARROW =>
 DIGIT [0-9]
 DIGITS {DIGIT}+
 WHITESPACE [ \t\f\r\v]
 CLASS (C|c)(L|l)(A|a)(S|s)(S|s)
-ELSE (e|E)(L|l)(S|s)(E|e)
-FALSE f(A|a)(L|l)(S|s)(E|e)
-FI (F|f)(I|i)
 IF (I|i)(F|f)
+ELSE (e|E)(L|l)(S|s)(E|e)
+FI (F|f)(I|i)
 INHERITS (I|i)(N|n)(H|h)(E|e)(R|r)(I|i)(T|t)(S|s)
 IN (I|i)(N|n)
 ISVOID (I|i)(S|s)(V|v)(O|o)(I|i)(D|d)
 LET (L|l)(E|e)(T|t)
 LOOP (L|l)(O|o)(O|o)(P|p)
 POOL (P|p)(O|o)(O|o)(L|l)
-THEN (T|t)(H|h)(E|e)(N|n)
 WHILE (W|w)(H|h)(I|i)(L|l)(E|e)
+THEN (T|t)(H|h)(E|e)(N|n)
 CASE (C|c)(A|a)(S|s)(E|e)
 ESAC (E|e)(S|s)(A|a)(C|c)
 NEW (N|n)(E|e)(W|w)
 OF (O|o)(F|f)
 NOT (N|n)(O|o)(T|t)
 TRUE t(r|R)(U|u)(E|e)
+FALSE f(A|a)(L|l)(S|s)(E|e)
 OPEN_COMMENT (*
 DOUBLE_QUOTE \"
 ASSIGNMENT <-
@@ -136,6 +135,13 @@ OBJECT_IDENTIFIER {LOWER_CASE}[a-zA-Z0-9_]*
 ":" return ':';
 "," return ',';
 ";" return ';';
+
+ /*
+  *  String constants (C syntax)
+  *  Escape sequence \c is accepted for all characters c. Except for
+  *  \n \t \b \f, the result is c.
+  *
+  */
 
 {DOUBLE_QUOTE} { 
 	string_buf_ptr = string_buf;
@@ -264,8 +270,8 @@ OBJECT_IDENTIFIER {LOWER_CASE}[a-zA-Z0-9_]*
 {ESAC} {return ESAC;}
 {LET} {return LET;}
 {NEW} {return NEW;}
-{ISVOID} {return ISVOID;}
 {NOT} {return NOT;}
+{ISVOID} {return ISVOID;}
 {TRUE} {
 	cool_yylval.boolean = true;
 	return BOOL_CONST;
@@ -275,20 +281,25 @@ OBJECT_IDENTIFIER {LOWER_CASE}[a-zA-Z0-9_]*
 	return BOOL_CONST;
 }
 
-{TYPE_IDENTIFIER} {cool_yylval.symbol = idtable.add_string(yytext);return TYPEID;}
-{OBJECT_IDENTIFIER} {cool_yylval.symbol = idtable.add_string(yytext);return OBJECTID;}
-
  /*
-  *  String constants (C syntax)
-  *  Escape sequence \c is accepted for all characters c. Except for 
-  *  \n \t \b \f, the result is c.
-  *
+  *  The integer and identifier.
   */
 
 {DIGITS} {
 	cool_yylval.symbol = inttable.add_string(yytext);
 	return INT_CONST;
 }
+
+{TYPE_IDENTIFIER} {
+	cool_yylval.symbol = idtable.add_string(yytext);return TYPEID;
+}
+{OBJECT_IDENTIFIER} {
+	cool_yylval.symbol = idtable.add_string(yytext);return OBJECTID;
+}
+
+ /*
+  * The other character. 
+  */
 
 {WHITESPACE}+ ;
 
